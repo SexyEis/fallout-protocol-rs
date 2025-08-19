@@ -8,3 +8,7 @@ authors.workspace = true
 [dependencies]
 bevy.workspace = true
 bevy_rapier3d = { version = "0.25.0", features = ["dim3"] }
+
+[[test]]
+name = "movement"
+path = "tests/movement.rs"
