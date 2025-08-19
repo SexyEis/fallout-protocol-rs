@@ -8,7 +8,7 @@
 - [x] CI green (fmt/clippy/test/build).
 - [x] Engine boot: window, render loop, input abstraction, camera stubs.
 - [x] World stub: chunk types, in-RAM storage, place/mine API.
-- [ ] Gameplay stub: movement FSM, build API, inventory interfaces.
+- [x] Gameplay stub: movement FSM, build API, inventory interfaces.
 - [x] Docs: `plan.md` & `architecture.md` created.
 
 ## M1 (Core movement + camera)

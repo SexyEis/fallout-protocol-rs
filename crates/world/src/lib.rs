@@ -86,7 +86,6 @@ pub fn global_voxel_to_local_voxel_coord(voxel_pos: IVec3) -> UVec3 {
     )
 }
 
-
 // --- API Implementation ---
 
 impl WorldData {
@@ -96,7 +95,10 @@ impl WorldData {
         let chunk_coord = global_voxel_to_chunk_coord(voxel_pos);
         if let Some(chunk) = self.chunks.get(&chunk_coord) {
             let local_coord = global_voxel_to_local_voxel_coord(voxel_pos);
-            Some(chunk.voxels[local_coord.x as usize][local_coord.y as usize][local_coord.z as usize])
+            Some(
+                chunk.voxels[local_coord.x as usize][local_coord.y as usize]
+                    [local_coord.z as usize],
+            )
         } else {
             None
         }
@@ -111,7 +113,8 @@ impl WorldData {
         let chunk = self.chunks.entry(chunk_coord).or_default();
         let local_coord = global_voxel_to_local_voxel_coord(voxel_pos);
 
-        chunk.voxels[local_coord.x as usize][local_coord.y as usize][local_coord.z as usize] = voxel;
+        chunk.voxels[local_coord.x as usize][local_coord.y as usize][local_coord.z as usize] =
+            voxel;
         chunk.is_dirty = true;
     }
 }
@@ -216,8 +219,7 @@ mod tests {
 
         let local_coord = global_voxel_to_local_voxel_coord(voxel_pos);
         assert_eq!(
-            chunk.voxels[local_coord.x as usize][local_coord.y as usize]
-                [local_coord.z as usize],
+            chunk.voxels[local_coord.x as usize][local_coord.y as usize][local_coord.z as usize],
             voxel_to_set
         );
     }
