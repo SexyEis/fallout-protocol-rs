@@ -22,4 +22,21 @@ world = { path = "crates/world" }
 
 # Add common dependencies here.
 # For now, let's add Bevy as it's the core engine.
-bevy = "0.13"
+bevy = { version = "0.13", default-features = false, features = [
+    "bevy_asset",
+    "bevy_core_pipeline",
+    "bevy_gizmos",
+    "bevy_gltf",
+    "bevy_pbr",
+    "bevy_render",
+    "bevy_scene",
+    "bevy_sprite",
+    "bevy_text",
+    "bevy_ui",
+    "bevy_winit",
+    "multi-threaded",
+    "x11",
+    "png",
+    "hdr",
+    "tonemapping_luts",
+] }
