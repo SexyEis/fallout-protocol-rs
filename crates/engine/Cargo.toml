@@ -8,3 +8,5 @@ authors.workspace = true
 [dependencies]
 bevy.workspace = true
 world.workspace = true
+gameplay = { path = "../gameplay" }
+bevy_rapier3d = { version = "0.25.0", features = ["dim3"] }
