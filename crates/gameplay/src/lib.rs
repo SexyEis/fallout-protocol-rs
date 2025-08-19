@@ -6,7 +6,9 @@ pub mod building;
 pub mod inventory;
 pub mod movement;
 
+pub mod camera;
 use building::BuildingPlugin;
+use camera::CameraPlugin;
 use inventory::InventoryPlugin;
 use movement::MovementPlugin;
 use player::PlayerPlugin;
@@ -22,6 +24,7 @@ impl Plugin for GameplayPlugin {
             BuildingPlugin,
             InventoryPlugin,
             PlayerPlugin,
+            CameraPlugin,
         ));
     }
 }

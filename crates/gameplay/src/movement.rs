@@ -1,10 +1,11 @@
 //! Player movement state and logic.
+use crate::camera::CameraRig;
 use crate::player::Player;
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
 
 const BASE_MOVE_SPEED: f32 = 5.0;
-const GRAVITY: f32 = -9.81;
+const SPRINT_SPEED: f32 = 10.0;
 
 /// A state machine for player movement, implemented as a Bevy State.
 #[derive(States, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -53,38 +54,80 @@ fn gather_player_input(
 
 /// Applies the player's input to the `KinematicCharacterController`.
 fn apply_player_movement(
-    mut query: Query<&mut KinematicCharacterController, With<Player>>,
+    mut player_query: Query<(&mut KinematicCharacterController, &mut Transform), With<Player>>,
+    rig_query: Query<&Transform, (With<CameraRig>, Without<Player>)>,
     player_input: Res<PlayerInput>,
+    movement_state: Res<State<MovementState>>,
     time: Res<Time>,
 ) {
-    let Ok(mut controller) = query.get_single_mut() else {
+    let Ok((mut controller, mut player_transform)) = player_query.get_single_mut() else {
+        return;
+    };
+    let Ok(rig_transform) = rig_query.get_single() else {
         return;
     };
 
-    let movement = Vec3::new(
-        player_input.move_direction.x,
-        0.0,
-        -player_input.move_direction.y, // Note: Y input is mapped to Z for 3D movement
-    ) * BASE_MOVE_SPEED
-        * time.delta_seconds();
+    if player_input.move_direction == Vec2::ZERO {
+        controller.translation = Some(Vec3::ZERO);
+        return;
+    }
 
-    // Add gravity to the movement
-    let gravity_movement = Vec3::new(0.0, GRAVITY * time.delta_seconds(), 0.0);
+    // --- Camera-relative movement ---
+    // Get the camera's forward direction on the XZ plane.
+    let mut forward: Vec3 = rig_transform.forward().into();
+    forward.y = 0.0;
+    let forward = forward.normalize();
 
-    controller.translation = Some(movement + gravity_movement);
+    // Get the camera's right direction based on the new forward vector.
+    let right = Vec3::new(forward.z, 0.0, -forward.x);
+
+    // Calculate the desired movement direction based on player input.
+    let desired_move = (forward * player_input.move_direction.y
+        + right * player_input.move_direction.x)
+        .normalize_or_zero();
+
+    // --- Player rotation ---
+    if desired_move.length_squared() > 0.0 {
+        player_transform.rotation = Quat::from_rotation_y(desired_move.x.atan2(desired_move.z));
+    }
+
+    // --- Apply movement ---
+    let speed = match movement_state.get() {
+        MovementState::Sprinting => SPRINT_SPEED,
+        _ => BASE_MOVE_SPEED,
+    };
+
+    // Let Rapier's character controller handle gravity and collisions.
+    let movement = desired_move * speed * time.delta_seconds();
+    controller.translation = Some(movement);
 }
 
-/// Updates the `MovementState` based on whether the player is moving.
+/// Updates the `MovementState` based on whether the player is moving and sprinting.
 fn update_movement_state(
     player_input: Res<PlayerInput>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
     mut next_state: ResMut<NextState<MovementState>>,
     current_state: Res<State<MovementState>>,
 ) {
+    let current_state = *current_state.get();
+
+    // Check for stopping
     if player_input.move_direction == Vec2::ZERO {
-        if *current_state.get() != MovementState::Idle {
+        if current_state != MovementState::Idle {
             next_state.set(MovementState::Idle);
         }
-    } else if *current_state.get() != MovementState::Walking {
+        return;
+    }
+
+    // Player is moving, check for sprint
+    let is_sprinting = keyboard_input.pressed(KeyCode::ShiftLeft);
+
+    if is_sprinting {
+        if current_state != MovementState::Sprinting {
+            next_state.set(MovementState::Sprinting);
+        }
+    } else if current_state != MovementState::Walking {
+        // Not sprinting, so should be walking (if not already)
         next_state.set(MovementState::Walking);
     }
 }

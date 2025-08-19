@@ -4,6 +4,7 @@ use bevy::prelude::*;
 use bevy::render::mesh::Mesh;
 use bevy::scene::ScenePlugin;
 use bevy_rapier3d::prelude::*;
+use gameplay::camera::CameraRig;
 use gameplay::movement::{MovementPlugin, MovementState, PlayerInput};
 use gameplay::player::{Player, PlayerPlugin};
 
@@ -105,6 +106,13 @@ fn test_player_transform_is_changed_by_movement() {
 
     // Run a single update to spawn the player
     app.update();
+
+    // Manually spawn a camera rig for the movement system to use.
+    app.world.spawn((
+        CameraRig::default(),
+        Transform::from_xyz(0.0, 1.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+        GlobalTransform::default(),
+    ));
 
     // Store the initial transform
     let initial_transform = {

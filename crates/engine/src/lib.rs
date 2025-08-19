@@ -60,22 +60,7 @@ fn setup_scene(
         ..default()
     });
 
-    // Light
-    commands.spawn(PointLightBundle {
-        point_light: PointLight {
-            intensity: 1_000_000.0, // Adjusted for Bevy 0.13's new lighting model
-            shadows_enabled: true,
-            ..default()
-        },
-        transform: Transform::from_xyz(4.0, 8.0, 4.0),
-        ..default()
-    });
-
-    // Camera
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ..default()
-    });
+    // Light and camera are now spawned via the CameraPlugin
 }
 
 /// A startup system to create some initial voxels in the world data.
