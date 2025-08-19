@@ -9,11 +9,19 @@ pub mod movement;
 use building::BuildingPlugin;
 use inventory::InventoryPlugin;
 use movement::MovementPlugin;
+use player::PlayerPlugin;
+
+pub mod player;
 
 pub struct GameplayPlugin;
 
 impl Plugin for GameplayPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((MovementPlugin, BuildingPlugin, InventoryPlugin));
+        app.add_plugins((
+            MovementPlugin,
+            BuildingPlugin,
+            InventoryPlugin,
+            PlayerPlugin,
+        ));
     }
 }

@@ -2,6 +2,8 @@
 
 use bevy::math::primitives::{Cuboid, Rectangle};
 use bevy::prelude::*;
+use bevy_rapier3d::prelude::*;
+use gameplay::GameplayPlugin;
 use world::{MaterialId, Voxel}; // Import world data structures
 
 /// Sets up the core engine plugins and resources.
@@ -14,6 +16,11 @@ pub fn app() -> App {
         }),
         ..default()
     }))
+    .add_plugins((
+        RapierPhysicsPlugin::<NoUserData>::default(),
+        RapierDebugRenderPlugin::default(),
+        GameplayPlugin,
+    ))
     .insert_resource(ClearColor(Color::rgb(0.1, 0.4, 0.8)))
     .init_resource::<world::WorldData>() // Initialize the world data resource
     .add_systems(Startup, (setup_scene, setup_world)); // Add setup systems
@@ -26,17 +33,21 @@ fn setup_scene(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    // Ground plane (for visual reference, not part of the voxel world)
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(Rectangle::new(50.0, 50.0))),
-        material: materials.add(StandardMaterial {
-            base_color: Color::rgb(0.3, 0.5, 0.3),
-            alpha_mode: AlphaMode::Blend, // Make it slightly transparent
+    // Ground plane
+    commands.spawn((
+        PbrBundle {
+            mesh: meshes.add(Mesh::from(Rectangle::new(50.0, 50.0))),
+            material: materials.add(StandardMaterial {
+                base_color: Color::rgb(0.3, 0.5, 0.3),
+                ..default()
+            }),
+            transform: Transform::from_rotation(Quat::from_rotation_x(
+                -std::f32::consts::FRAC_PI_2,
+            )),
             ..default()
-        }),
-        transform: Transform::from_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2)),
-        ..default()
-    });
+        },
+        Collider::cuboid(25.0, 0.1, 25.0),
+    ));
 
     // Cube (for visual reference)
     commands.spawn(PbrBundle {
