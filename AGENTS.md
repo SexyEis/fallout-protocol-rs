@@ -464,3 +464,197 @@ Minimal crosshair (toggle), health/armor bars, stamina (if enabled), mission goa
 * **No unsolicited framework swaps.**
 * **Ask only if spec is unclear** (otherwise implement conservatively).
 * **Document public APIs** and **add minimal tests**.
+
+---
+
+## 23) Detailed Requirements from the Original Brief (Checklist)
+
+> Use this as a hard acceptance list. Each item must be implemented or stubbed with clear TODOs.
+
+**Movement (Bodycam/BO6 omni-movement):** sprint, slide, dive, vault/mantle, crouch, prone, lean, wall interaction.
+**Graphics:** realistic PBR look comparable to Bodycam (materials, lighting, postFX).
+**Perspectives:** fully supported **first-person** and **third-person** toggle.
+**Editable world:** 100% player-editable (mine/place/explode/etc.) with chunk/voxel backing.
+**Story:** dynamic/branching (TWD-like), choices influence events/missions.
+**Objectives with freedom:** objective system proposes *what*, player chooses *how* (stealth/build/demo/companion tactics).
+**Stats:** trainable player stats with progression and **Respec at 100%** → permanent meta bonuses (hidden meta tree).
+**Equipment:** tools/materials/weapons/gear can be modified, upgraded, customized.
+**No hard locks:** unlocks by discovery; grinders advance faster, casual players are **not artificially slowed**.
+**Dimensions 1–10:** each contains multiple worlds: 1 base world (build/defend), multiple scripted mission worlds, multiple event/story mission worlds.
+**Materials per dimension:** unique material pools; **low chance** to drop next-dimension mats (configurable).
+**Level scaling:** player level adapts to mission/dimension strength; prevents carries and easy-farm exploits.
+**Layouts & survivors:** players can extend their layouts with other characters and **recruit survivors** to fight alongside (improves player stats).
+**Survivor groups:** survivors may form groups granting **specific stat boosts**.
+**Goal:** finish story; kill each dimension endboss; drops substantial next-dimension materials.
+**Mission inventory separation:** mission inventory is separate from global stash.
+**Stash access in missions:** via airdrops; costs materials found **in the mission**; slightly reduces final rewards; stash persists across missions.
+**Mission availability:** playable missions are offered based on **player level or group level**.
+**New enemies each dimension:** with **new/complex abilities**.
+**Build menu:** fast walls/floors/ramps/roofs with **edit options** (cutouts, diagonals, partials).
+**Material combos:** players can craft better composites (e.g., water+sand+stone → concrete with \~+30% HP vs. stone).
+**Windows 10 focus:** build, run, and CI target Win10 x64 initially.
+**Compile/commit rule:** compile first, only commit on success; if build fails, fix errors first (pre-commit & CI).
+**Enemy base models:** create **base models** for each enemy archetype type common in other games as foundations.
+**Main menu + loading + settings:** full UI suite on Bevy UI (see §17).
+**Auto-improvements:** allowed to **recommend** automatic improvements but must **ask before changing** (see §18).
+**QoL features:** implement target list in §17.7.
+
+---
+
+## 24) Objective System & Player Freedom
+
+* **Objective types:** Reach, Defend, Escort, Retrieve, Build, Scan, Survive, Boss.
+* **Multiple solution paths:** every major objective supports at least two approaches (e.g., stealth infiltration vs. demolition entry; pure combat vs. build-and-hold).
+* **Tracking:** HUD tracker shows *what* and optional *suggested methods* (toggleable).
+* **Scoring:** rewards adapt to chosen method; no punitive scoring for slower but creative approaches.
+
+---
+
+## 25) Mission Gating, Scaling, and Anti-Carry
+
+* **Group Power:** group lobby computes **Recommended Power** from members; mission queues require within ±Bracket (config).
+* **Downscaling:** overpowered players get normalized stats for low-tier missions to keep challenge; drop quality adjusts to prevent easy farming.
+* **Upscaling:** underpowered players receive survivability cushions (minor) but not enough to trivialize.
+* **Event rotation:** dynamic/event missions appear based on story flags and world states.
+
+---
+
+## 26) Materials, Crafting, and Next-Tier Drops
+
+* **Material tiers per dimension:** materials have **tier = dimension index** by default.
+* **Next-tier drop chance:** config key `loot.next_tier_drop_rate` (default **0.02** = 2%) applied to eligible nodes/enemies.
+* **Composite crafting examples:**
+
+  * `Concrete = Water + Sand + Stone` → **+30% HP** over Stone walls.
+  * Future composites defined via `recipes.ron` (data-driven).
+* **Material stats:** density, HP, blast resistance, elemental resistances; serialized in `materials.ron`.
+
+---
+
+## 27) Survivors, Squads, and Stat Boosts
+
+* **Recruitment:** survivors discovered in missions or events; require resources/quests.
+* **Traits:** simple trait system (e.g., Medic, Engineer, Scout) affecting buffs.
+* **Groups/Squads:** forming a squad enables **group buffs** (e.g., +stability for structures, +stamina regen).
+* **Contribution:** active survivors can **participate in combat** (AI companions) or **boost passively** at base.
+* **Persistence:** survivors live in base world and can be assigned roles.
+
+---
+
+## 28) Enemy Base Models — Content & Tech Specs
+
+* **Deliverables per archetype:**
+
+  * **GLTF** mesh with **LOD0/1/2** (mid-poly budget suitable for 60 FPS).
+  * **Rigged skeleton** (Humanoid or custom if necessary), animation clips: idle, move, attack, hit, death; optional special.
+  * **Collision shapes** (capsule/convex) + Rapier physics parameters.
+  * **PBR textures** (albedo/normal/RMA), budgeted texture sizes; BCn compressed mip chains.
+  * **Config**: behavior profile (utility scores), resistances, damage, spawn weights.
+* **Naming:** `enemy_<archetype>_v01.gltf`, textures under `assets/textures/enemies/<archetype>/`.
+
+---
+
+## 29) UI/UX Details — Main Menu, Loading "Arm", Settings
+
+### Main Menu Layout
+
+* **Top-level items:** Continue, New Game, Load Game, Settings, Credits, Quit.
+* **Visual:** light 3D scene w/ slow camera pan; logo + build hash; safe-area aware.
+
+### Loading Screen
+
+* **Radial "arm" progress indicator** (pie arm) + textual stage (Assets → Shaders → World → AI → Audio).
+* Async chunk/asset warmup; cancel-safe before entering gameplay.
+* Tips rotate; do not fake progress.
+
+### Settings (Apply/Cancel/Restore Defaults, preview where possible)
+
+* **Graphics:** fullscreen/borderless/windowed, resolution, VSync, FPS cap, FOV, motion blur, film grain, camera shake, brightness/gamma, texture quality (stream budget MB), shadows (off/low/med/high), AO, SSR, anisotropic, LOD bias.
+* **Audio:** master/music/SFX/VO/UI sliders, dynamic range (night mode), device select, channel layout, subtitles (on/off/size), ducking.
+* **Controls:** full rebinds, mouse sensitivity + ADS multiplier, invert Y, controller curves/deadzones, toggle/hold options, lean on Q/E.
+* **Gameplay:** difficulty presets, aim assist (controller), auto-pickup toggles, building snap strength, damage numbers toggle.
+* **Accessibility:** colorblind modes, UI scale, high contrast, reduce motion.
+* **Save:** settings persist per user profile in `configs/settings.ron`.
+
+---
+
+## 30) Control Defaults (can be rebinded)
+
+* **Movement:** WASD, Sprint=Left Shift, Crouch=C, Prone=Z, Slide=C while Sprint, Dive=Space while Sprint + direction, Jump=Space, Mantle=Space near ledge, Lean=Q/E.
+* **Build menu:** B (hold to open radial), rotate Q/E (when in build), edit G.
+* **Interact:** F, **Inventory (mission)**=I, **Stash** via airdrop prompt.
+* **Camera toggle:** V.
+* **Map/Log:** M/J.
+
+---
+
+## 31) Build Menu & Editing — Acceptance
+
+* Place **walls/floors/ramps/roofs** quickly with snap/grid; ghost preview shows cost in materials.
+* **Edit operations:** cut window/door, triangular halves, flip/rotate.
+* **Costing:** deduct on confirm; refund partial on dismantle (config).
+* **Trap/Defense** slots separate from structure pieces (future extension ok).
+
+---
+
+## 32) Inventory Separation & Airdrop Rules
+
+* **Mission inventory:** isolated; items acquired in-mission stay until extract; converts to rewards on completion.
+* **Stash (global):** cross-mission; **Airdrop** grants one-time **stash access** in mission for **material cost** (config `airdrop.cost`) and applies a **reward penalty** (config `airdrop.reward_penalty`).
+* **UI:** using airdrop shows cost and penalty confirmation.
+
+---
+
+## 33) Compile-then-Commit — Enforcement
+
+* **Pre-commit hook** compiles/tests; blocks on failure.
+* On success, copies `.exe` to `bin/ProtocolZero.exe` and tracks via **Git LFS** (or CI artifact).
+* CI on Windows builds and uploads artifact; optional release on tags.
+
+---
+
+## 34) Performance & RAM — Hard Targets
+
+* **Gameplay**: ≥60 FPS on mid-range Win10 D3D12.
+* **RAM (MVP)**: < 1 GB without high-res packs.
+* **World streaming** keeps active chunk memory bounded.
+* **Profiling** via `tracing` + frame/mem CSV in dev builds.
+
+---
+
+## 35) Anti-Frustration & Fairness Policies
+
+* No artificial delays/timers that block progress (no hard locks).
+* Grinders can accelerate via discovery & skill; relaxed players progress steadily without punitive pacing.
+* Matchmaking avoids carry; rewards scale fairly; difficulty options available.
+
+---
+
+## 36) Deliverables for M0–M2 (expanded)
+
+* **M0:** workspace, crates, CI green; `AppState` with Boot/MainMenu/Settings/Loading/InGame/Pause; main menu UI skeleton; settings persistence.
+* **M1:** omni-movement core states; 1st/3rd cameras; test map; HUD basics; loading arm works; graphics settings applied at runtime.
+* **M2:** voxel world edit (mine/place), basic explosions; build menu + edits; materials file + one composite; enemy archetype base models greyboxed.
+
+---
+
+## 37) Open Config Keys (defaults subject to tuning)
+
+```
+loot.next_tier_drop_rate = 0.02
+airdrop.cost = { stone: 20, metal: 10 }     # example; data-driven
+airdrop.reward_penalty = 0.10               # 10%; data-driven
+inventory.mission_size = 32                 # slots; data-driven
+build.refund_rate = 0.25                    # partial refund
+scaling.power_bracket = 10                  # allowed delta
+```
+
+> All values are data-driven in RON files; tune with telemetry.
+
+---
+
+## 38) Out of Scope (confirm later)
+
+* Online co-op/PvP until post-M3.
+* Ray-traced features until performance budget is met.
+* Ultra-high-res textures in core repo (optional packs only).
