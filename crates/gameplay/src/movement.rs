@@ -59,6 +59,7 @@ fn apply_player_movement(
     player_input: Res<PlayerInput>,
     movement_state: Res<State<MovementState>>,
     time: Res<Time>,
+    rapier_config: Res<RapierConfiguration>,
 ) {
     let Ok((mut controller, mut player_transform)) = player_query.get_single_mut() else {
         return;
@@ -97,8 +98,16 @@ fn apply_player_movement(
         _ => BASE_MOVE_SPEED,
     };
 
+    // Use the fixed delta time from Rapier's config if it's set, otherwise use the variable time.
+    // This makes the system compatible with both the fixed-timestep test environment
+    // and the variable-timestep game environment.
+    let delta_seconds = match rapier_config.timestep_mode {
+        TimestepMode::Fixed { dt, .. } => dt,
+        _ => time.delta_seconds(),
+    };
+
     // Let Rapier's character controller handle gravity and collisions.
-    let movement = desired_move * speed * time.delta_seconds();
+    let movement = desired_move * speed * delta_seconds;
     controller.translation = Some(movement);
 }
 

@@ -11,6 +11,14 @@ const CAMERA_MAX_DISTANCE: f32 = 10.0;
 const CAMERA_SENSITIVITY: f32 = 0.5;
 const SCROLL_SENSITIVITY: f32 = 0.5;
 
+/// The camera's perspective state.
+#[derive(States, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum CameraPerspective {
+    #[default]
+    ThirdPerson,
+    FirstPerson,
+}
+
 /// A marker component for the main camera.
 #[derive(Component)]
 pub struct MainCamera;
@@ -124,12 +132,47 @@ fn handle_camera_input(
     }
 }
 
+/// Toggles the camera perspective between first and third person.
+fn toggle_camera_perspective(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    current_perspective: Res<State<CameraPerspective>>,
+    mut next_perspective: ResMut<NextState<CameraPerspective>>,
+) {
+    if keyboard_input.just_pressed(KeyCode::KeyV) {
+        let next = match current_perspective.get() {
+            CameraPerspective::ThirdPerson => CameraPerspective::FirstPerson,
+            CameraPerspective::FirstPerson => CameraPerspective::ThirdPerson,
+        };
+        bevy::log::info!("Toggling camera to: {:?}", next);
+        next_perspective.set(next);
+    }
+}
+
 /// System to apply the rig's state to the camera's transform.
 fn update_camera_transform(mut rig_query: Query<(&CameraRig, &mut Transform)>) {
     for (rig, mut transform) in rig_query.iter_mut() {
         transform.translation = rig.focus;
         transform.rotation = rig.rotation();
     }
+}
+
+/// Updates the camera's local transform to reflect the current perspective (1st/3rd person).
+fn update_camera_position(
+    mut camera_query: Query<&mut Transform, With<MainCamera>>,
+    rig_query: Query<&CameraRig>,
+    perspective: Res<State<CameraPerspective>>,
+) {
+    let Ok(mut camera_transform) = camera_query.get_single_mut() else { return; };
+    let Ok(rig) = rig_query.get_single() else { return; };
+
+    let target_translation = match perspective.get() {
+        CameraPerspective::ThirdPerson => Vec3::new(0.0, 0.0, rig.distance),
+        // First person view is at the rig's center.
+        CameraPerspective::FirstPerson => Vec3::ZERO,
+    };
+
+    // Using a small lerp factor for a smooth transition.
+    camera_transform.translation = camera_transform.translation.lerp(target_translation, 0.2);
 }
 
 impl CameraRig {
@@ -142,14 +185,18 @@ pub struct CameraPlugin;
 
 impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, spawn_camera).add_systems(
-            Update,
-            (
-                // handle_camera_input, // Disabled for headless mode
-                update_camera_focus,
-                update_camera_transform,
-            )
-                .chain(),
-        );
+        app.init_state::<CameraPerspective>()
+            .add_systems(Startup, spawn_camera)
+            .add_systems(
+                Update,
+                (
+                    handle_camera_input.run_if(in_state(CameraPerspective::ThirdPerson)), // Only zoom/orbit in 3rd person
+                    toggle_camera_perspective,
+                    update_camera_focus,
+                    update_camera_transform,
+                    update_camera_position,
+                )
+                    .chain(),
+            );
     }
 }

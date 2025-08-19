@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use bevy::render::mesh::Mesh;
 use bevy::scene::ScenePlugin;
 use bevy_rapier3d::prelude::*;
-use gameplay::camera::CameraRig;
+use gameplay::camera::{CameraPlugin, CameraPerspective, CameraRig};
 use gameplay::movement::{MovementPlugin, MovementState, PlayerInput};
 use gameplay::player::{Player, PlayerPlugin};
 
@@ -13,13 +13,24 @@ fn setup_test_app() -> App {
     let mut app = App::new();
     app.add_plugins((
         MinimalPlugins,
+        TransformPlugin::default(), // Crucially, add this for transform propagation
         InputPlugin::default(),
         AssetPlugin::default(),
         ScenePlugin::default(), // Add plugin for SceneSpawner
         RapierPhysicsPlugin::<NoUserData>::default(),
         MovementPlugin,
         PlayerPlugin,
+        CameraPlugin,
     ));
+
+    // Configure Rapier for fixed timestep testing
+    app.insert_resource(RapierConfiguration {
+        timestep_mode: TimestepMode::Fixed {
+            dt: 1.0 / 60.0,
+            substeps: 1,
+        },
+        ..default()
+    });
 
     // Manually add the resources needed by the `spawn_player` system,
     // since we aren't using the full rendering plugins.
@@ -78,6 +89,25 @@ fn test_movement_state_reverts_to_idle() {
     let state_idle = app.world.resource::<State<MovementState>>();
     assert_eq!(*state_idle.get(), MovementState::Idle);
 }
+
+#[test]
+fn test_movement_state_changes_to_sprinting() {
+    let mut app = setup_test_app();
+
+    // Simulate key presses for moving and sprinting
+    {
+        let mut input = app.world.resource_mut::<ButtonInput<KeyCode>>();
+        input.press(KeyCode::KeyW);
+        input.press(KeyCode::ShiftLeft);
+    }
+
+    run_updates(&mut app, 5);
+
+    // Check the state
+    let state = app.world.resource::<State<MovementState>>();
+    assert_eq!(*state.get(), MovementState::Sprinting, "State should be Sprinting");
+}
+
 
 #[test]
 fn test_player_input_resource_is_updated() {
@@ -140,4 +170,48 @@ fn test_player_transform_is_changed_by_movement() {
         initial_transform.translation, final_transform.translation,
         "Player's transform should change after movement input"
     );
+}
+
+#[test]
+fn test_camera_perspective_toggles() {
+    let mut app = setup_test_app();
+
+    // Run startup systems to initialize state
+    app.update();
+    let initial_state = app.world.resource::<State<CameraPerspective>>();
+    assert_eq!(*initial_state.get(), CameraPerspective::ThirdPerson, "Initial state should be ThirdPerson");
+
+    // --- First toggle: to FirstPerson ---
+    {
+        let mut input = app.world.resource_mut::<ButtonInput<KeyCode>>();
+        input.press(KeyCode::KeyV);
+    }
+    run_updates(&mut app, 1); // Run systems, including the toggle system
+
+    // Check that the state change has been queued in NextState
+    let next_state = app.world.resource::<NextState<CameraPerspective>>();
+    assert_eq!(next_state.0, Some(CameraPerspective::FirstPerson), "State change to FirstPerson should be queued");
+
+    // Run another update to apply the state change and check the final state
+    run_updates(&mut app, 1);
+    let first_person_state = app.world.resource::<State<CameraPerspective>>();
+    assert_eq!(*first_person_state.get(), CameraPerspective::FirstPerson, "State should be FirstPerson after toggle is applied");
+
+
+    // --- Second toggle: back to ThirdPerson ---
+    {
+        // We need to release the key, so that `just_pressed` is fired again on the next press.
+        let mut input = app.world.resource_mut::<ButtonInput<KeyCode>>();
+        input.release(KeyCode::KeyV);
+    }
+    run_updates(&mut app, 1); // Run an update to process the release.
+    {
+        let mut input = app.world.resource_mut::<ButtonInput<KeyCode>>();
+        input.press(KeyCode::KeyV);
+    }
+    run_updates(&mut app, 1); // Run systems to queue the next state change
+
+    // Check that the next state change has been queued
+    let next_state_2 = app.world.resource::<NextState<CameraPerspective>>();
+    assert_eq!(next_state_2.0, Some(CameraPerspective::ThirdPerson), "State change to ThirdPerson should be queued");
 }
