@@ -1,168 +1,183 @@
 # AGENTS.md — Protocol Zero (Rust)
 
-> **Ziel:** Diese Datei gibt Jules klare, durchsetzbare Regeln & Kontext für das Repo *Protocol Zero* (Rust) vor. Halte dich strikt an diese Vorgaben.
+> **Purpose:** A clear, enforceable spec for the *Protocol Zero* repository. Jules should follow this document for planning, code structure, quality gates, and feature scope.
 
 ---
 
-## 1) Projektüberblick
+## 1) Project Overview
 
-**Spielname:** Protocol Zero
-**Sprache/Stack:** Rust (Cargo Workspace), wgpu‑basierte 3D‑Pipeline, ECS (z. B. bevy‑ökosystem) & Rapier für Physik (falls nötig).
-**Zielplattformen:** **Windows 10 x64 (vorerst)**. (wgpu auf Direct3D 12; später Linux optional.)
+**Game:** Protocol Zero
+**Language/Stack:** Rust (Cargo workspace).
+**Engine:** **Bevy** (ECS + renderer via wgpu, UI, input), **Rapier 3D** (physics), **bevy\_kira\_audio** (audio, mixing/effects), **wgpu** backend (D3D12 on Win10).
+**Target platform:** **Windows 10 x64 (initially)**. Linux/macOS later as optional targets.
 
-**Kernfeatures (MVP → Ausbau):**
+**Core Features (MVP → expand):**
 
-* **Bewegung:** Bodycam/Omni‑Movement‑ähnlich (Sprint, Slide, Dive, Vault/Mantle, Crouch, Prone, Lean, Wall‑Interaction).
-* **Perspektive:** First‑ & Third‑Person (umschaltbar).
-* **Grafik:** realistisch (PBR‑Materialien, dynamische Beleuchtung, Schatten, PostFX).
-* **Welt:** 100 % veränderbar (abbauen/platzieren/sprengen). Chunk‑/Voxel‑basiert mit Materialeigenschaften.
-* **Story:** dynamisch/reaktiv (ähnlich TWD; Entscheidungen beeinflussen Missionen/Ereignisse).
-* **Progression:** freie Lösungswege statt „Hard‑Locks“. Entdeckungs‑basierte Freischaltungen.
-* **Stats/Training:** trainierbare Werte; **Respec nach 100 %** mit dauerhaften Meta‑Boni.
-* **Ausrüstung:** Tools/Materialien/Waffen/Ausrüstung modifizier‑ & upgradbar.
-* **Dimensionen (1–10):** je Dimension:
+* **Movement:** Omni-movement inspired by Bodycam / BO6 (sprint, slide, dive, vault/mantle, crouch, prone, lean, wall interaction).
+* **Perspectives:** Toggle **First** / **Third person**.
+* **Graphics:** Realistic PBR materials, dynamic lighting/shadows, postFX.
+* **World:** 100% editable/destructible: mine, place, cut, explode (chunk/voxel-based with material stats).
+* **Story:** Dynamic/branching (TWD-like) with consequences, events, and emergent missions.
+* **Progression:** Discovery-based unlocks (no hard locks), player skill & creativity rewarded.
+* **Stats/Training:** Trainable player stats; **100% cap respec** grants permanent meta-bonuses (hidden metatree).
+* **Equipment:** Tools/materials/weapons/gear moddable & upgradeable.
+* **Dimensions (1–10):** per dimension:
 
-  * 1 Basis‑Welt (Base‑Building & Defense, ähnlich „Rette die Welt“).
-  * Mehrere **Missionen (skriptet)** mit fixen Zielen.
-  * Mehrere **Missionen (dynamisch/event/story‑getriggert)**.
-  * Eigene Materialpools pro Dimension (kleine Chance auf Next‑Tier‑Drops).
-  * **Skalierung:** Spieler‑Level passt sich Missions/Dims‑Stärke an (Anti‑Carry & Anti‑Farm).
-* **Begleiter/Überlebende:** rekrutierbar; Gruppen geben Stat‑Buffs.
-* **Inventare:** Missions‑Inventar **separat**; **Lager** ist global (missionsübergreifend).
-
-  * In Missionen: **Airdrop‑Zugriff aufs Lager** gegen Missions‑Materialkosten → leicht reduzierte Abschlussbelohnung.
+  * 1 **Base World** for building/defense (RtW-style).
+  * Multiple **scripted missions** (fixed goals).
+  * Multiple **dynamic/event/story missions**.
+  * Own material pools per dimension (small chance of next-tier drops).
+  * **Scaling:** Player level adapts to dimension/mission strength (anti-carry & anti-easy-farm).
+* **Companions/Survivors:** recruitable; squads give stat buffs.
+* **Inventories:** Mission inventory **separate**; **Stash** is global (cross-mission). Airdrop access during missions costs materials and slightly reduces end-rewards.
 
 ---
 
-## 2) Repositorystandards
+## 2) Engine & Tech Choices
 
-* **Toolchain:** Rust stable (MSRV im Repo dokumentieren).
-* **Workspace:** Cargo‑Workspace mit logisch getrennten Crates (siehe Struktur).
-* **Code‑Qualität:** `cargo fmt` (stable), `cargo clippy -D warnings`.
-* **Tests:** `cargo test` (plus ggf. `nextest`).
-* **Commits/PRs:** kleine, fokussierte Änderungen; PR‑Beschreibung mit *Was/Warum/Wie/Getestet*.
-* **Security/Permissions:** ändere nur Dateien innerhalb der explizit dafür vorgesehenen Ordner (unten).
+* **Game engine:** Bevy (renderer via wgpu, ECS, input, scheduling, UI for runtime menus).
+* **Physics:** Rapier 3D (character controller, colliders, queries, fixed timestep).
+* **Audio:** bevy\_kira\_audio (3D spatialization, mixers, ducking, snapshots).
+* **UI:** Bevy UI for in-game/menu; **bevy\_egui** for developer overlays.
+* **File formats:** GLTF 2.0 for models; PNG/BCn for textures; OGG/FLAC for audio.
+* **Save/Config:** RON/TOML for settings; bincode + LZ4/Zstd for saves.
+* **Scripting:** Rust-first; mission/story logic as data-driven state machines; optional light DSL later.
+* **Future net:** (post-M3) QUIC-based (e.g., bevy\_quinnet) if needed.
 
-### Vorgeschlagene Struktur
+---
+
+## 3) Repository Standards
+
+* **Toolchain:** Rust stable (MSRV documented).
+* **Workspace:** Cargo workspace with cohesive crates (see structure).
+* **Quality gates:** `cargo fmt` (stable), `cargo clippy -D warnings`, unit/integration tests.
+* **Commits/PRs:** small focused changes; PR description includes What/Why/How/Tests/Risks.
+* **Security:** edit only within designated folders.
+
+### Proposed Structure
 
 ```
 protocol-zero/
-├─ Cargo.toml            # Workspace
+├─ Cargo.toml                  # Workspace
 ├─ crates/
-│  ├─ engine/            # Render, Physik, ECS-Glue, Scene/Camera
-│  ├─ world/             # Voxel/Chunks, Materialien, Zerstörung
-│  ├─ gameplay/          # Movement, Stats, Inventory, Build, Missions
-│  ├─ ai/                # Gegner/Verbündete, Verhalten
-│  ├─ narrative/         # Story-State, Entscheidungen, Trigger
-│  ├─ net/               # (später) Networking/Sync
-│  ├─ tools/             # Importer, CLI, Editor-Stubs
-│  └─ common/            # Math, Types, Config, Utilities
-├─ assets/               # Modelle, Texturen, Sounds (nur Platzhalter im Repo)
-├─ shaders/              # WGSL/GLSL
-├─ scripts/              # Dev-Skripte (z. B. build/run)
-└─ .github/workflows/    # CI (fmt, clippy, test, build)
+│  ├─ engine/                  # Rendering, physics glue, scene/camera, audio init
+│  ├─ world/                   # Voxels/chunks, materials, destruction
+│  ├─ gameplay/                # Movement, stats, inventory, build, missions
+│  ├─ ai/                      # Enemies/companions, behavior trees/utility
+│  ├─ narrative/               # Story state, branching, triggers
+│  ├─ ui/                      # Menus, HUD, pause/settings, loading
+│  ├─ tools/                   # Importers, CLI, editor stubs
+│  └─ common/                  # Math, types, config, utilities
+├─ assets/                     # Models, textures, audio (placeholders)
+├─ shaders/                    # WGSL/GLSL
+├─ scripts/                    # Dev scripts (build/run/hooks)
+└─ .github/workflows/          # CI (fmt, clippy, test, build)
 ```
 
 ### Build & Test
 
 * **Build:** `cargo build --workspace --release`
-* **Run (Beispiel‑bin):** `cargo run -p engine --release` (bis eigenständiges Game‑crate existiert)
-* **Check:** `cargo fmt --all -- --check && cargo clippy --workspace -D warnings && cargo test --workspace`
+* **Run (temp bin):** `cargo run -p engine --release` until a top-level game bin exists.
+* **Checks:** `cargo fmt --all -- --check && cargo clippy --workspace -D warnings && cargo test --workspace`
 
 ---
 
-## 3) Agent‑Rollen (für Jules)
+## 4) Agent Roles (Jules)
 
-> **Jules muss jeden Task einer passenden Rolle zuordnen und den Scope strikt einhalten.**
+> Assign each task to a role and keep scope tight.
 
-### A. **Planner** (Pflicht zuerst)
+### A. Planner (first)
 
-* Liefert/aktualisiert `docs/plan.md` mit Meilensteinen, Risiken, Testplan.
-* Erst nach Freigabe weiterarbeiten.
+* Maintain `docs/plan.md` with milestones, risks, test plan. Continue only after approval.
 
-### B. **Engine‑Programmer** (`crates/engine`, `shaders/`)
+### B. Engine Programmer (`crates/engine`, `shaders/`)
 
-* Rendering (wgpu/PBR), Kamera (1st/3rd), PostFX, Input‑Abstraktion.
-* Physik‑Integration (Rapier o. ä.), Kollision, Bodenhaftung.
-* Akzeptanzkriterien: 60 FPS Ziel auf Mid‑Range, deterministische Update‑Order, klare Abstraktionen.
+* Rendering (PBR), camera (1st/3rd), postFX, input abstraction.
+* Physics integration (Rapier), collision, grounding, fixed timestep.
+* Audio bootstrap (mixers, categories).
+* Acceptance: 60 FPS target on mid-range; deterministic update order.
 
-### C. **World‑Systems** (`crates/world`)
+### C. World Systems (`crates/world`)
 
-* Chunk/VOX‑Datenstruktur, Streaming, Persistenz‑Hooks.
-* Bearbeitung: platzieren/abbauen/sprengen; Materialeigenschaften (Dichte/HP/Resistenzen).
-* Craft‑Komposits (z. B. Wasser+Sand+Stein→Beton, +30 % HP ggü. Stein).
+* Chunk/voxel data, streaming, persistence hooks.
+* Edit ops: place/mine/explode; material properties (density/HP/resists).
+* Craft composites (e.g., water+sand+stone → concrete, +30% HP vs stone).
 
-### D. **Gameplay‑Systems** (`crates/gameplay`)
+### D. Gameplay Systems (`crates/gameplay`)
 
-* **Movement:** Sprint/Slide/Dive/Mantle/Lean + Parameter/Physik‑Tuning.
-* **Build‑Menü:** schnelle Platzierung Wände/Böden/Rampen, Edit‑Shapes.
-* **Stats/Training/Respec100:** skillbare Werte + Meta‑Boni nach 100 %.
-* **Inventorys:** missions‑separat; Lager global + Airdrop‑Kosten/Reward‑Malus.
-* **Missionslogik:** Ziele, Timer, Events, Fail/Success, Scaling per Dimension.
+* **Movement:** sprint/slide/dive/mantle/lean; tunables & physics.
+* **Build menu:** fast walls/floors/ramps/roofs + edit shapes.
+* **Stats/Training/Respec100:** skill trees + meta perks.
+* **Inventories:** mission-isolated; stash global with airdrop cost/reward malus.
+* **Missions:** goals, timers, events, fail/success, dimension scaling.
 
-### E. **AI & Narrative** (`crates/ai`, `crates/narrative`)
+### E. AI & Narrative (`crates/ai`, `crates/narrative`)
 
-* Gegner‑Archetypen je Dimension, Fähigkeiten, Spawns, Aggro/Utility‑AI.
-* Überlebende/Begleiter & Gruppen‑Buffs.
-* Story‑State‑Machine, Branching via Flags/Consequences, Missions‑Generator.
+* Enemy archetypes per dimension; abilities, spawns, utility-AI.
+* Companions/squads & buffs.
+* Story state machine, flags, consequences, mission generator.
 
-### F. **Tools/Pipeline** (`crates/tools`, `assets/`)
+### F. UI/UX Engineer (`crates/ui`)
 
-* Content‑Importer (GLTF), Asset‑Validation, einfache In‑Engine‑Dev‑UI.
+* **Main menu**, **loading screen/arm**, **pause menu**, **settings** (graphics/audio/controls/gameplay/accessibility), **HUD**.
+* Navigation with gamepad/mouse/keyboard; localization-ready text.
+* Save/load slots & confirmations.
 
-### G. **CI/QA** (`.github/workflows`, Tests)
+### G. Tools/Pipeline (`crates/tools`, `assets/`)
 
-* Lint/Format/Test Pipelines, Artifacts (nightly builds).
+* GLTF importer/validator, asset audit, in-engine dev UI.
 
-**Verbote:** keine großen Refactors über Crate‑Grenzen ohne Plan/PR; kein Vendoring riesiger Binär‑Assets; keine proprietären Abhängigkeiten.
+### H. CI/QA (`.github/workflows`, tests)
 
----
+* Lint/format/test pipelines, Windows artifacts/releases.
 
-## 4) Systemspezifikation (Umriss)
-
-### 4.1 Bewegung & Kamera
-
-* **States:** Idle/Walk/Run/Sprint/Crouch/Prone/Slide/Dive/Climb/Mantle/Vault/Lean.
-* **Physik:** Kapsel‑Collider; Hang‑Limit; Reibung; Sprint‑Ausdauer optional.
-* **Kamera:** 1st/3rd toggle, Schulter‑Offset, Kollision/Obstruction, FOV‑Regeln.
-* **Waffen‑Handling:** ADS, Recoil‑Platzhalter (später).
-
-### 4.2 Welt & Zerstörung
-
-* **Repräsentation:** chunked voxel grid (konfigurierbare Auflösung).
-* **Operationen:** platzieren/abbauen; Explosions‑Ablation; Struktur‑HP.
-* **Materialsystem:** Basismaterialien je Dimension + Kombinationsrezepte → neue Stats.
-
-### 4.3 Bauen
-
-* **Schnell‑Bau:** Wände/Böden/Rampen/Dächer; **Edit‑Modi** (Dreieck/Öffnung/Teilstücke).
-* **Snapping/Anchors:** Raster/Sockelpunkte; Previews; Kostenanzeige.
-
-### 4.4 Progression
-
-* **Dimensionen (1–10):** eigene Gegner/Materialien; seltene Next‑Tier‑Drops.
-* **Level‑Scaling:** Missions‑Matchmaking/Skalierung verhindert Carry/Farm‑Exploits.
-* **Unlocks:** durch Entdeckung statt Hard‑Locks.
-* **Respec100:** nach 100 % Stat‑Cap Reset→permanente Meta‑Perks (separater Tree).
-
-### 4.5 Inventar & Lager
-
-* **Missions‑Inventar:** isoliert; Loadout‑Regeln pro Mission.
-* **Lager (global):** Zugriff via Airdrops in Missionen **gegen Materialkosten** → Abschluss‑Reward leicht reduziert.
-
-### 4.6 Begleiter/Überlebende
-
-* **Rekrutieren:** Einheiten/Squads mit Stat‑Buffs; Synergie‑Sets.
-
-### 4.7 Gegner
-
-* **Pro Dimension neuartige Fähigkeiten/Resistenzen** (Skalierung & Konter durch neue Materialien/Builds).
+**Forbidden:** cross-crate mega-refactors without plan/PR; vendoring large binaries; proprietary deps.
 
 ---
 
-## 5) Datenmodelle (Skizzen; keine finalen Namespaces)
+## 5) System Specification (outline)
 
-> *Nur als Leitplanken; konkrete Typen beim Implementieren dokumentieren.*
+### 5.1 Movement & Camera
+
+* **States:** idle/walk/run/sprint/crouch/prone/slide/dive/climb/mantle/vault/lean.
+* **Physics:** capsule controller; slope limits; friction; optional stamina.
+* **Camera:** 1st/3rd toggle, shoulder offset, obstruction handling, FOV rules.
+* **Weapon handling:** ADS stub; recoil placeholder.
+
+### 5.2 World & Destruction
+
+* **Representation:** chunked voxel grid (configurable resolution).
+* **Ops:** place/mine; explosive ablation; structural HP.
+* **Materials:** base materials per dimension + combination recipes → new stats.
+
+### 5.3 Building
+
+* **Quick build:** walls/floors/ramps/roofs; **edit modes** (holes/triangles/partials).
+* **Snapping/Anchors:** grid & anchors; placement preview; cost readout.
+
+### 5.4 Progression
+
+* **Dimensions 1–10:** unique enemies/materials; rare next-tier drops.
+* **Level scaling:** matchmaking/mission scaling to prevent carry/farm exploits.
+* **Unlocks:** discovery-driven, not gated by hard locks.
+* **Respec100:** reset at 100% caps for permanent meta-perks (separate tree).
+
+### 5.5 Inventory & Stash
+
+* **Mission inventory:** isolated; loadout rules per mission.
+* **Stash (global):** access via mission airdrops **for material cost** → slight reward reduction.
+
+### 5.6 Companions/Survivors
+
+* **Recruitment:** units/squads with stat buffs; synergy sets.
+
+### 5.7 Enemies
+
+* **Per-dimension unique abilities/resists** (escalating complexity & counters via new materials/builds).
+
+---
+
+## 6) Data Models (sketches)
 
 * `MovementParams { speed, accel, friction, slide_coef, mantle_speed, lean_angle, ... }`
 * `Material { id, tier, base_hp, density, resistances, recipe_inputs }`
@@ -175,91 +190,80 @@ protocol-zero/
 
 ---
 
-## 6) Meilensteine (Vorschlag)
+## 7) Milestones (proposal)
 
-* **M0 (Scaffold):** Workspace + Crates, CI, lint/test green; Basic window/render loop; Input‑Mapping.
-* **M1 (Core Movement + Camera):** Kapsel‑Physik, Sprint/Slide/Mantle; 1st/3rd Kamera; Testszene.
-* **M2 (Voxel‑Welt + Bauen):** Chunk‑IO, Platzieren/Abbauen, einfache Explosionslogik; Build‑Menü MVP.
-* **M3 (Progression/Inventar/Story‑Stub):** getrennte Inventare; Lager/Airdrop‑Hook; Story‑Flags/Mission‑Runner.
-
----
-
-## 7) CI/QA‑Regeln
-
-* GitHub Actions: Format/Lint/Test/Build auf PR.
-* Jede PR: **Bench/Perf‑Hinweise**, falls Rendering/Physik betroffen.
-* Tests für: Movement‑State‑Maschine, Inventar‑Regeln, Craft‑Rezepte, Chunk‑Mutationen.
+* **M0 (Scaffold):** workspace + crates, CI green; basic window/render loop; input mapping.
+* **M1 (Core movement + camera):** capsule controller, sprint/slide/mantle; 1st/3rd camera; test scene.
+* **M2 (Voxel world + building):** chunk I/O, place/mine, simple explosions; build menu MVP.
+* **M3 (Progression/inventory/story stub):** separate inventories; stash/airdrop; story flags/mission runner.
 
 ---
 
-## 8) PR‑Vorlage (von Jules ausfüllen)
+## 8) CI/QA Rules
 
-**Titel:** `<crate>: <kurzer Zweck>`
-**Was:** …
-**Warum:** …
-**Wie:** (Kern‑Änderungen/Algorithmen)
-**Tests:** (Welche, wie ausgeführt)
-**Risiken:** (Render/Physik/Save‑Kompatibilität etc.)
+* GitHub Actions: format/lint/test/build on PR.
+* Each PR: note perf impacts if touching render/physics/world.
+* Tests: movement state machine, inventory rules, craft recipes, chunk mutations.
 
 ---
 
-## 9) Startaufgaben für Jules (in Reihenfolge)
+## 9) PR Template
 
-1. **Scaffold:** Cargo‑Workspace & oben genannte Crates mit `lib.rs`/`mod.rs` + Doku‑Kommentare.
-2. **CI:** `.github/workflows/rust.yml` (fmt/clippy/test/build; Cache).
-3. **Engine‑Boot:** Fenster, Render‑Loop, Input‑Abstraktion, Kamerastub (1st/3rd).
-4. **World‑Stub:** Chunk‑Typen, einfache Speicherung im RAM, API für Platzieren/Abbauen.
-5. **Gameplay‑Stub:** Movement‑State‑Maschine (ohne Feintuning), Build‑Menü‑API, Inventar‑Interfaces.
-6. **Docs:** `docs/plan.md` & `docs/architecture.md` (aktualisiert).
-
----
-
-## 10) Grenzen & Nicht‑Ziele (vorerst)
-
-* Kein Multiplayer vor M3.
-* Keine High‑End‑RTX‑Spezialeffekte vor stabilem PBR‑Baseline.
-* Keine gigantischen Binär‑Assets im Repo.
+**Title:** `<crate>: <short purpose>`
+**What:** …
+**Why:** …
+**How:** (core changes/algorithms)
+**Tests:** (which/how run)
+**Risks:** (render/physics/save compat etc.)
 
 ---
 
-## 11) Hinweise für Jules
+## 10) Starter Tasks (order)
 
-* **Plan → Umsetzung → kleine PRs.**
-* **Keine unaufgeforderten Framework‑Wechsel.**
-* **Frage nur, wenn Spezifikation unklar ist** (ansonsten konservativ umsetzen).
-* **Dokumentiere öffentliche APIs** und **füge Minimal‑Tests** hinzu.
+1. Scaffold workspace and crates with `lib.rs`/`mod.rs` & docs.
+2. CI: `.github/workflows/ci-win.yml` (fmt/clippy/test/build; cache).
+3. Engine boot: window, render loop, input abstraction, camera stubs (1st/3rd).
+4. World stub: chunk types, in-RAM storage, place/mine API.
+5. Gameplay stub: movement FSM, build API, inventory interfaces.
+6. Docs: `docs/plan.md` & `docs/architecture.md`.
 
 ---
 
-## 12) Build-/Commit-Policy & Binärartefakte (Windows 10)
+## 11) Non-Goals (for now)
 
-**Ziel:** Kein Commit ohne erfolgreichen Build/Tests. Bei Erfolg wird die aktuelle `.exe` dem Repo (via Git LFS) hinzugefügt **oder** als CI‑Artefakt/Releases angehängt.
+* No multiplayer before M3.
+* No high-end RTX-specific features before stable PBR baseline.
+* No huge binary assets in the repo.
 
-### Regeln
+---
 
-1. **Pre-Commit:** `cargo fmt` → `clippy -D warnings` → `test` → `build --release`.
-2. **Bei Fehlern:** Commit blockieren; Fehler beheben; erneut versuchen.
-3. **Bei Erfolg:** `target/release/protocol-zero.exe` nach `bin/ProtocolZero.exe` kopieren und **per Git LFS** tracken **(Standard)**. Alternativ nur als CI‑Artefakt/Releases anhängen.
+## 12) Build/Commit Policy & Binary Artifacts (Windows 10)
+
+**Rule:** No commit without a successful local build/tests. On success, the current `.exe` is added via Git LFS **or** uploaded as a CI artifact/release.
+
+### Rules
+
+1. **Pre-commit chain:** `cargo fmt` → `cargo clippy -D warnings` → `cargo test` → `cargo build --release`.
+2. **On errors:** block commit; fix; retry.
+3. **On success:** copy `target/release/protocol-zero.exe` to `bin/ProtocolZero.exe` and LFS-track it **(default)**. Alternatively prefer CI artifacts/releases to keep the repo slim.
 
 ### Git LFS
 
-`.gitattributes` enthält:
+`.gitattributes` must include:
 
 ```
 *.exe filter=lfs diff=lfs merge=lfs -text
 ```
 
-> **Hinweis:** Große Binärdateien **nicht** ohne LFS committen.
+### Hooks (Windows PowerShell)
 
-### Hooks (Windows)
-
-1. **Hooks-Pfad setzen (einmalig):**
+Configure once:
 
 ```
 git config core.hooksPath scripts/hooks
 ```
 
-2. **`scripts/hooks/pre-commit.ps1`** (PowerShell):
+Create **`scripts/hooks/pre-commit.ps1`**:
 
 ```powershell
 # scripts/hooks/pre-commit.ps1
@@ -268,7 +272,7 @@ $ErrorActionPreference = 'Stop'
 & cargo clippy --workspace -D warnings
 & cargo test --workspace
 & cargo build --workspace --release
-if ($LASTEXITCODE -ne 0) { Write-Error 'Build failed. Commit blockiert.'; exit 1 }
+if ($LASTEXITCODE -ne 0) { Write-Error 'Build failed. Commit blocked.'; exit 1 }
 $exe = 'target/release/protocol-zero.exe'
 if (Test-Path $exe) {
   New-Item -ItemType Directory -Force -Path 'bin' | Out-Null
@@ -282,113 +286,58 @@ if (Test-Path $exe) {
 }
 ```
 
-> Optional: Für Git for Windows kann ein schlanker `scripts/hooks/pre-commit` (Bash) die PS1 aufrufen.
+---
 
-### CI (GitHub Actions, Windows)
+## 13) Enemy Archetypes ("Success formula")
 
-`.github/workflows/ci-win.yml`:
+Core roles common in successful games. Each archetype defines **role**, **behavior**, **counter**, **dimension scaling**.
 
-```yaml
-name: ci-win
-on: [push, pull_request]
-jobs:
-  build:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with: { toolchain: stable, components: clippy }
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo fmt --all -- --check
-      - run: cargo clippy --workspace -D warnings
-      - run: cargo test --workspace --release
-      - run: cargo build --workspace --release
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ProtocolZero-win64
-          path: target/release/protocol-zero.exe
-```
+* **Grunt:** generalist; dangerous in packs. *Counter:* cover + precision. *Scale:* accuracy/HP ↑.
+* **Rusher:** melee/flanker; forces close fights. *Counter:* traps/control. *Scale:* speed/gap-closers ↑.
+* **Tank:** high HP/resists; frontal pressure. *Counter:* explosives/piercing/flank. *Scale:* DR/shockwave.
+* **Sniper:** long-range pickoffs; lane control. *Counter:* smoke/build/flank. *Scale:* wallbang/scanner.
+* **Support/Healer:** heals/buffs/respawns. *Counter:* focus/interrupt. *Scale:* AoE buffs/totems.
+* **Controller/Disruptor:** zones/mines/EMP/stuns. *Counter:* utility clear/timing. *Scale:* multi-charges/chains.
+* **Summoner/Spawner:** portals/adds. *Counter:* portal focus. *Scale:* elite adds/spawn rate.
+* **Elite/Champion:** modifiers (e.g., explosive death, phase dash).
+* **Boss (dimension end):** multi-phase; mechanics + adds + soft enrage; drops substantial next-tier mats.
 
-> **Optional Release:** Bei Tags `v*` zusätzlich Release anlegen und `.exe` anhängen.
+**Dimensional Variation:** damage types/resists; movement rules (low-g, ice, fog); AI priorities (structures vs players); anti-build pressure.
 
 ---
 
-## 13) Gegner-Archtypen ("Erfolgsformel")
+## 14) Example Story (dimension-aware)
 
-Grundbausteine, die in fast allen erfolgreichen Spielen funktionieren. Jeder Archtyp hat klare **Rolle**, **Verhalten**, **Konter** und **Skalierung über Dimensionen**.
+**Premise:** A failed energy experiment (**Protocol Zero**) fractures reality into **10 dimensions**. 80–95% of humans vanish—some displaced, some petrified in stasis, many dead. Shards remain, each with rules.
 
-* **Grunt (Standardkämpfer):** Allround, in Gruppen gefährlich. *Konter:* Deckung + präzise Treffer. *Skalierung:* Genauigkeit/HP ↑.
-* **Rusher (Nahkampf/Flanker):** sprintet, springt über Deckung, zwingt Distanzkämpfe auf. *Konter:* Fallen/Stop‑Effekte. *Skalierung:* Speed/Gap‑Closers ↑.
-* **Tank (Bulwark):** hoher HP/Resist, Schild/Front. *Konter:* Sprengstoff/Piercing/Umgehung. *Skalierung:* Schadensreduktion/Schockwelle.
-* **Sniper (Pickoff):** lange Reichweite, Sichtlinien kontrollieren. *Konter:* Rauch/Block‑Bau/Flank. *Skalierung:* Through‑Cover‑Shots/Scanner.
-* **Support/Healer:** bufft/heilt Verbündete, Respawn‑Beacon. *Konter:* Fokusfeuer/Interrupt. *Skalierung:* AoE‑Buffs, Totems.
-* **Controller/Disruptor:** Zonen, Mines, Stuns, Nebel, EMP. *Konter:* Utility‑Clear, Timing. *Skalierung:* Multi‑Charges, Ketteneffekte.
-* **Summoner/Spawner:** ruft Adds, Portale. *Konter:* Zielpriorität Portal. *Skalierung:* Elite‑Adds, schneller Spawn‑Takt.
-* **Elite/Champion:** Varianten mit 1–2 einzigartigen Modifikatoren (z. B. „Explosive Tod“, „Phasen‑Dash“).
-* **Boss (Dim‑Endboss):** mehrphasig, Mechaniken + Adds + Soft‑Enrage. *Belohnung:* hoher Drop‑Anteil Next‑Tier‑Material.
+**Why survivors exist:** hardened shelters/blacksites; autonomous AIs kept enclaves alive; dimension drift displaced people; resistance cells/mercs protect resource nodes.
 
-**Dimensionale Variation:**
+**Factions (samples):** Aegis Collective (tech salvage), Free Scavengers (nomads), Wardens (relic zealots), Continuity Cult (make the split permanent), Blacksite Operatives (agenda).
 
-* **DMG‑Typen & Resistenzen** je Dimension (z. B. Kälte/Feuer/Korro).
-* **Bewegungsregeln** (niedrige Gravitation, Rutschflächen, Nebel).
-* **KI‑Ziele** (fokussiert auf Strukturen vs. Spieler).
-* **Gegenbau‑Druck** (z. B. Anti‑Bau‑Projectiles in höheren Dimensionen).
+**Dimensions (sketch):**
 
----
+1. **Suburban Fracture** (tutorial): ruins, drones/raiders.
+2. **Drowned Works:** conductivity hazards, rust, power arcs.
+3. **Boreal Rift:** cold, <20 m visibility, beasts.
+4. **Ash Belt:** volcanic/corrosive; fire damage common.
+5. **Neon Bastion:** exo-city, sentry mechs, hack events.
+6. **Hollowworld:** caverns, echo-swarms, cave-ins.
+7. **Mirage Steppe:** heat/optical illusions; ghost snipers.
+8. **Glass Ocean:** crystal fields; reflection/refraction gameplay.
+9. **Chrono Wastes:** time dilation zones.
+10. **Nullcrown:** anomaly core; final boss.
 
-## 14) Beispiel‑Story (angepasst an Dimensionen)
+**Dynamic mission logic:** choices (e.g., *secure artifact* vs *evacuate survivors*) set flags and spawn event chains (revenge, trade, ambush). Rescues unlock squads/perks. Failures can raise dimension intensity (harder enemies, better drops).
 
-**Prämisse:** Ein fehlgeschlagenes Energie‑Experiment („Protocol Zero“) zerreißt die Realität in **10 Dimensionen**. 80–95 % der Menschen verschwinden: einige **verdrängt** in andere Schichten, andere **versteinert** in Stasis‑Feldern, viele **umgekommen**. Was bleibt, sind Splitterwelten mit eigenen Regeln.
-
-**Warum gibt es Überlebende?**
-
-* **Schutzräume/Blacksites** mit Notfeldgeneratoren.
-* **Autonome AIs** hielten Siedlungen am Laufen – bis Ressourcen knapp wurden.
-* **Dimensionen‑Drift:** Menschen wurden versetzt, können zurückgeholt werden.
-* **Widerstandszellen** und **Söldner** verteidigen Ressourcenpunkte.
-
-**Fraktionen (Beispiele):**
-
-* **Aegis‑Kollektiv:** Technik‑Rettung, priorisiert Reaktoren und Netzknoten.
-* **Freie Sammler:** Nomaden, Handelsrouten zwischen Rissen.
-* **Wardens:** Relikt‑Hüter; religiöser Eifer gegen Technologie.
-* **Continuity‑Kult:** will Trennung dauerhaft machen.
-* **Blacksite‑Operative:** kennen Protokoll‑Geheimnisse, verfolgen eigene Agenda.
-
-**Dimensionen (Skizze):**
-
-1. **Vorstadt‑Bruch** (Tutorial): Ruinen, Drohnen/Raider.
-2. **Überflutetes Werk**: Rost, Strom, Leitfähigkeits‑Gefahren.
-3. **Borealer Riss**: Kälte, Sicht <20 m; Biester.
-4. **Aschegürtel**: Vulkanisch, Korrosion; Feuer‑DMG häufig.
-5. **Neon‑Bastion**: Exo‑Stadt, Sentry‑Mechs, Hack‑Events.
-6. **Hohlwelt**: Kavernen, Echo‑Schwarm, Einsturz‑Risiko.
-7. **Mirage‑Steppe**: Hitze/Optik‑Illusionen; Sniper‑Geister.
-8. **Glasozean**: Kristallfelder; Reflexion/Beugung als Gameplay.
-9. **Chrono‑Ödnis**: Zeitdilations‑Zonen (langsamer/schneller).
-10. **Nullkrone**: Kern der Anomalie; Final‑Boss.
-
-**Dynamische Missionslogik:**
-
-* Entscheidungen (z. B. *Artefakt sichern* vs. *Überlebende retten*) setzen **Story‑Flags** und erzeugen **Event‑Ketten** (Rache, Handel, Hinterhalt).
-* Gerettete Überlebende eröffnen **neue Squads/Perks**.
-* Fehlentscheidungen können **Dimension‑Intensität** erhöhen (härtere Gegner, bessere Drops).
-
-**Beispiel‑Arc D1:**
-
-* *M1:* „Erste Funken“ – Reaktor stabilisieren **oder** Evakuierung schützen.
-* *M2:* „Gesprengte Brücke“ – Material bergen; wähle stille Infiltration oder Spreng‑Umweg.
-* *M3 (Boss):* „Kernwächter“ – mehrphasiger Kampf; Entscheidung bestimmt, ob Aegis Basis in D1 dauerhaft besteht.
+**Sample D1 arc:** M1 "First Sparks" (stabilize reactor **or** shield evac); M2 "Blown Bridge" (salvage route—stealth vs demo). M3 "Core Warden" boss decides if Aegis keeps a foothold in D1.
 
 ---
 
-## 15) Performance- & RAM‑Leitlinien (Win10)
+## 15) Performance & RAM Guidelines (Win10)
 
-**Ziele:** Hohe FPS, **minimaler RAM**.
+**Goal:** high FPS with **minimal RAM**.
 
-### Build/Compiler
-
-`Cargo.toml`:
+**Release profile (Cargo.toml):**
 
 ```toml
 [profile.release]
@@ -400,7 +349,7 @@ strip = "symbols"
 incremental = false
 ```
 
-`.cargo/config.toml`:
+**.cargo/config.toml:**
 
 ```toml
 [target.x86_64-pc-windows-msvc]
@@ -411,30 +360,107 @@ rustflags = [
 ]
 ```
 
-### Runtime
-
-* **ECS & Datenorientierung:** sparsame Komponenten, **SmallVec**/Arenen, Objekt‑Pools.
-* **Weltstreaming:** Chunks um Spieler, LOD, **On‑Demand‑Deserialisierung**.
-* **Assets:** BCn‑Kompression, Mipmaps, Streaming‑Audio.
-* **Renderer:** begrenzte Frames‑in‑Flight, Batch/Instancing, frustum/occlusion culling.
-* **Speicherbudgets:** Ziel < **1 GB** Arbeitsspeicher im MVP (ohne große Texturen); Telemetrie `tracing` + Heapsnapshots.
+**Runtime:** data-oriented ECS; SmallVec/arenas; object pools.
+World streaming; LOD; on-demand deserialization.
+BCn texture compression & mipmaps; streamed audio.
+Renderer: limited frames-in-flight; batching/instancing; frustum/occlusion culling.
+**Budget:** MVP target < **1 GB RAM** (without huge textures). Telemetry via `tracing` & heap snapshots.
 
 ---
 
-## 16) Windows‑Setup (Win10, MSVC)
+## 16) Windows Setup (Win10, MSVC)
 
-* Installiere **Rustup** (stable, `x86_64-pc-windows-msvc`).
-* Installiere **Visual Studio Build Tools** (C++ Build Tools + **Windows 10 SDK**).
-* Installiere **Git LFS** und aktiviere mit `git lfs install`.
-* Test: `rustc -V`, `cargo -V`, `cl.exe` verfügbar.
+* Install **rustup** (stable, `x86_64-pc-windows-msvc`).
+* Install **Visual Studio Build Tools** (C++ + **Windows 10 SDK**).
+* Install **Git LFS** (`git lfs install`).
+* Verify: `rustc -V`, `cargo -V`, `cl.exe` on PATH.
 * Build: `cargo build --release` → `target/release/protocol-zero.exe`.
 
 ---
 
-## 17) Startaufgaben – Ergänzung
+## 17) UI/UX: Menus, Loading, Settings, HUD
 
-* Hooks & LFS gemäß §12 einrichten.
-* CI‑Workflow `ci-win.yml` anlegen.
-* Gegner‑Archtypen als `crates/ai/src/archetypes.rs` skizzieren.
-* `docs/story.md`: obige Prämisse + Arc D1 detaillieren.
-* Performance‑Profile‑Flags in Repo aufnehmen.
+### 17.1 App States
+
+`AppState = { Boot, MainMenu, Settings, Loading, InGame, PauseMenu, Credits }`
+State transitions are explicit; loading screens wrap async asset/world preparation.
+
+### 17.2 Main Menu (keyboard/mouse/gamepad)
+
+* **Continue** / **New Game** / **Load Game** / **Settings** / **Credits** / **Quit**.
+* Rotating scene background (lightweight) with simple camera path (locked to 60 FPS cap while in menu).
+
+### 17.3 Loading Screen
+
+* Async asset preloading & world-chunk warmup.
+* **Progress bar** + step labels (Assets, Shaders, World, AI, Audio).
+* Tips & input hints; fallback if step stalls (graceful messages, no fake 100%).
+
+### 17.4 Settings Menu
+
+**Graphics:** display mode (fullscreen/borderless/windowed), resolution, VSync, FPS cap, FOV slider, motion blur (on/off/amount), film grain (on/off), camera shake (0–100), brightness/gamma, HDR toggle (future), DLSS/FSR toggles (future), texture quality (streaming budget), shadows (off/low/med/high), AO (off/on), SSR (off/on), anisotropic filtering, LOD bias.
+**Audio:** master/music/SFX/voice sliders, dynamic range (night mode), output device, channel config (stereo/5.1/7.1), subtitles (on/off) + size, hitmarker/UISFX toggles, ducking for VO.
+**Controls:** keybinds (rebindable, conflicts detected), mouse sensitivity & ADS multiplier, invert Y, controller deadzones & curves, toggle vs hold (crouch/aim/sprint), lean on Q/E.
+**Gameplay:** difficulty presets, aim assist (controller), auto-pickup toggles, building snap strength, damage numbers toggle.
+**Accessibility:** colorblind filters (deuter/protan/tritan), subtitle bg, UI scale (75–150%), high-contrast mode, reduce camera motion.
+
+### 17.5 Pause Menu
+
+Resume / Settings / Controls / Photo Mode (later) / Return to Main Menu.
+
+### 17.6 HUD (MVP)
+
+Minimal crosshair (toggle), health/armor bars, stamina (if enabled), mission goals tracker, quick build wheel, compass, interaction prompts.
+
+### 17.7 QoL Features (target list)
+
+* Safe area calibration; auto-detect best display mode on first run.
+* Cloud-safe config format; per-profile save slots.
+* Skippable intros; hold-to-skip confirmations for destructive actions.
+* Recenter 3rd-person camera; camera collision smoothing.
+* Boot-time shader pre-warm; optional reduced load screens on SSDs.
+* Minimal-mode renderer for low-spec fallback.
+* Screenshot key; photo mode later.
+* In-game bug report that collects logs (opt-in, local).
+
+---
+
+## 18) Auto-Improvement Policy (ask before change)
+
+* An **Auto-Improver** routine may detect better defaults (perf, memory, quality) or safer APIs.
+* It must **open a proposal issue/PR** titled `Auto-Improver: <subject>` describing: current state, suggested change, risk, expected benefit, how to revert.
+* **No automatic changes** are merged without explicit approval.
+* For tiny risk-free fixes (typos, dead code), pre-approved category may auto-merge, but still logs a PR.
+
+---
+
+## 19) Engine Configuration & Ticks
+
+* **Fixed physics tick** (e.g., 60 Hz) decoupled from render; interpolation for visuals.
+* **Bevy schedules:** Core → FixedUpdate (physics/AI) → Update (gameplay/UI) → Render.
+* **Audio buses:** master/music/SFX/VO/UI; category ducking; snapshot presets per state.
+* **Asset pipeline:** GLTF import to internal formats; texture streaming budgets; hot-reload in dev.
+
+---
+
+## 20) Performance Budgets & Metrics
+
+* **Frame time:** ≤ 16.6 ms target (60 FPS) in gameplay scenes on mid-range GPU (Win10/D3D12).
+* **VRAM:** texture streaming keeps peak under budget configured in settings.
+* **RAM:** < 1 GB in MVP (excluding large optional packs).
+* **Telemetry:** `tracing` spans for frame stages; periodic memory gauges; optional CSV export in dev.
+
+---
+
+## 21) Windows Packaging
+
+* Post-build copies `protocol-zero.exe` to `bin/ProtocolZero.exe`; embed version/build hash; include `configs/` defaults; write crash logs to `%LOCALAPPDATA%/ProtocolZero/logs`.
+
+---
+
+## 22) Notes for Jules
+
+* **Plan → implement → small PRs.**
+* **No unsolicited framework swaps.**
+* **Ask only if spec is unclear** (otherwise implement conservatively).
+* **Document public APIs** and **add minimal tests**.
