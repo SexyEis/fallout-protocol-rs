@@ -7,3 +7,4 @@ authors.workspace = true
 
 [dependencies]
 bevy.workspace = true
+world.workspace = true

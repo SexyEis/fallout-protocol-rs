@@ -2,6 +2,7 @@
 
 use bevy::math::primitives::{Cuboid, Rectangle};
 use bevy::prelude::*;
+use world::{MaterialId, Voxel}; // Import world data structures
 
 /// Sets up the core engine plugins and resources.
 pub fn app() -> App {
@@ -14,28 +15,30 @@ pub fn app() -> App {
         ..default()
     }))
     .insert_resource(ClearColor(Color::rgb(0.1, 0.4, 0.8)))
-    .add_systems(Startup, setup);
+    .init_resource::<world::WorldData>() // Initialize the world data resource
+    .add_systems(Startup, (setup_scene, setup_world)); // Add setup systems
     app
 }
 
-/// Sets up the initial 3D scene.
-fn setup(
+/// Sets up the initial 3D scene for visualization.
+fn setup_scene(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    // Ground plane
+    // Ground plane (for visual reference, not part of the voxel world)
     commands.spawn(PbrBundle {
         mesh: meshes.add(Mesh::from(Rectangle::new(50.0, 50.0))),
         material: materials.add(StandardMaterial {
             base_color: Color::rgb(0.3, 0.5, 0.3),
+            alpha_mode: AlphaMode::Blend, // Make it slightly transparent
             ..default()
         }),
         transform: Transform::from_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2)),
         ..default()
     });
 
-    // Cube
+    // Cube (for visual reference)
     commands.spawn(PbrBundle {
         mesh: meshes.add(Mesh::from(Cuboid::new(1.0, 1.0, 1.0))),
         material: materials.add(StandardMaterial {
@@ -62,4 +65,15 @@ fn setup(
         transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
         ..default()
     });
+}
+
+/// A startup system to create some initial voxels in the world data.
+fn setup_world(mut world_data: ResMut<world::WorldData>) {
+    // Create a flat plane of voxels to represent the ground.
+    for x in -16..=16 {
+        for z in -16..=16 {
+            // Use MaterialId(1) which we can define as "stone" later.
+            world_data.set_voxel(IVec3::new(x, -1, z), Voxel(MaterialId(1)));
+        }
+    }
 }

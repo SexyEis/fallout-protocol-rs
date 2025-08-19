@@ -18,6 +18,8 @@ license = "MIT OR Apache-2.0"
 authors = ["Protocol Zero Team"]
 
 [workspace.dependencies]
+world = { path = "crates/world" }
+
 # Add common dependencies here.
 # For now, let's add Bevy as it's the core engine.
 bevy = "0.13"
