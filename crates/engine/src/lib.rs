@@ -1,7 +1,14 @@
 //! The core game engine, responsible for rendering, physics integration, and scene management.
 
-use bevy::math::primitives::{Cuboid, Rectangle};
+use bevy::app::App;
+use bevy::asset::{AssetPlugin, Assets};
+use bevy::input::InputPlugin;
+use bevy::log::LogPlugin;
+use bevy::pbr::StandardMaterial;
 use bevy::prelude::*;
+use bevy::render::mesh::Mesh;
+use bevy::scene::ScenePlugin;
+use bevy::MinimalPlugins;
 use bevy_rapier3d::prelude::*;
 use gameplay::GameplayPlugin;
 use world::{MaterialId, Voxel}; // Import world data structures
@@ -9,25 +16,24 @@ use world::{MaterialId, Voxel}; // Import world data structures
 /// Sets up the core engine plugins and resources.
 pub fn app() -> App {
     let mut app = App::new();
-    app.add_plugins(DefaultPlugins.set(WindowPlugin {
-        primary_window: Some(Window {
-            title: "Protocol Zero".to_string(),
-            ..default()
-        }),
-        ..default()
-    }))
-    .add_plugins((
-        RapierPhysicsPlugin::<NoUserData>::default(),
-        RapierDebugRenderPlugin::default(),
-        GameplayPlugin,
-    ))
-    .insert_resource(ClearColor(Color::rgb(0.1, 0.4, 0.8)))
-    .init_resource::<world::WorldData>() // Initialize the world data resource
-    .add_systems(Startup, (setup_scene, setup_world)); // Add setup systems
+    app.add_plugins(MinimalPlugins)
+        .add_plugins(LogPlugin::default()) // For printing info messages
+        .add_plugins(AssetPlugin::default()) // For loading assets
+        .add_plugins(InputPlugin) // For keyboard input
+        .add_plugins(ScenePlugin) // For SceneSpawner resource
+        .add_plugins((
+            RapierPhysicsPlugin::<NoUserData>::default(),
+            GameplayPlugin,
+        ))
+        .init_resource::<world::WorldData>() // Initialize the world data resource
+        .init_resource::<Assets<Mesh>>() // Manually init for Rapier
+        .init_resource::<Assets<StandardMaterial>>() // Manually init for player spawn
+        .add_systems(Startup, setup_world); // Add setup systems
     app
 }
 
 /// Sets up the initial 3D scene for visualization.
+#[allow(dead_code)] // This is not used in headless mode
 fn setup_scene(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -36,7 +42,7 @@ fn setup_scene(
     // Ground plane
     commands.spawn((
         PbrBundle {
-            mesh: meshes.add(Mesh::from(Rectangle::new(50.0, 50.0))),
+            mesh: meshes.add(Mesh::from(bevy::math::primitives::Rectangle::new(50.0, 50.0))),
             material: materials.add(StandardMaterial {
                 base_color: Color::rgb(0.3, 0.5, 0.3),
                 ..default()
@@ -51,7 +57,7 @@ fn setup_scene(
 
     // Cube (for visual reference)
     commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(Cuboid::new(1.0, 1.0, 1.0))),
+        mesh: meshes.add(Mesh::from(bevy::math::primitives::Cuboid::new(1.0, 1.0, 1.0))),
         material: materials.add(StandardMaterial {
             base_color: Color::rgb(0.8, 0.7, 0.6),
             ..default()

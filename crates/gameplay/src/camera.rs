@@ -41,8 +41,8 @@ impl Default for CameraRig {
 
 /// Spawns the camera rig and the main camera.
 fn spawn_camera(mut commands: Commands) {
+    bevy::log::info!("Spawning camera...");
     let rig = CameraRig::default();
-    let camera_distance = rig.distance;
     let transform =
         Transform::from_translation(rig.focus) * Transform::from_rotation(rig.rotation());
 
@@ -56,23 +56,24 @@ fn spawn_camera(mut commands: Commands) {
         .with_children(|parent| {
             parent.spawn((
                 MainCamera,
-                Camera3dBundle {
-                    transform: Transform::from_translation(Vec3::new(0.0, 0.0, camera_distance)),
-                    ..default()
-                },
+                // Camera3dBundle is commented out for headless mode
+                // Camera3dBundle {
+                //     transform: Transform::from_translation(Vec3::new(0.0, 0.0, camera_distance)),
+                //     ..default()
+                // },
                 Name::new("Main Camera"),
             ));
 
             // Add a light to the rig
-            parent.spawn(PointLightBundle {
-                point_light: PointLight {
-                    intensity: 1_000_000.0,
-                    shadows_enabled: true,
-                    ..default()
-                },
-                transform: Transform::from_xyz(0.0, 0.0, 0.0), // At the rig's center
-                ..default()
-            });
+            // parent.spawn(PointLightBundle {
+            //     point_light: PointLight {
+            //         intensity: 1_000_000.0,
+            //         shadows_enabled: true,
+            //         ..default()
+            //     },
+            //     transform: Transform::from_xyz(0.0, 0.0, 0.0),
+            //     ..default()
+            // });
         });
 }
 
@@ -144,7 +145,7 @@ impl Plugin for CameraPlugin {
         app.add_systems(Startup, spawn_camera).add_systems(
             Update,
             (
-                handle_camera_input,
+                // handle_camera_input, // Disabled for headless mode
                 update_camera_focus,
                 update_camera_transform,
             )

@@ -13,6 +13,7 @@ fn spawn_player(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+    bevy::log::info!("Spawning player...");
     commands.spawn((
         Player,
         PbrBundle {
